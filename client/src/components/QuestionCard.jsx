@@ -22,7 +22,7 @@ const QuestionCard = ({ question, currentUser, isAuthenticated, onDelete, isOwne
     }
 
     try {
-      const response = await fetch(`http://localhost:4000/api/v1/questions/upvoteQuestions/${question._id}`, {
+      const response = await fetch(`https://odoo-hackathon-2025-team-qwerty-masters.onrender.com/api/v1/questions/upvoteQuestions/${question._id}`, {
         method: 'POST',
         credentials: 'include',
       });
