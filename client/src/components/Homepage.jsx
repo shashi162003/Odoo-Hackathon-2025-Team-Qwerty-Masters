@@ -69,7 +69,7 @@ const Homepage = () => {
   const getQuestions = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:4000/api/v1/questions/getQuestions');
+      const response = await fetch('https://odoo-hackathon-2025-team-qwerty-masters.onrender.com/api/v1/questions/getQuestions');
       
       if (!response.ok) {
         throw new Error('Failed to fetch questions');
@@ -96,7 +96,7 @@ const Homepage = () => {
     }
 
     try {
-      const response = await fetch(`http://localhost:4000/api/v1/questions/deleteQuestions/${questionId}`, {
+      const response = await fetch(`https://odoo-hackathon-2025-team-qwerty-masters.onrender.com/api/v1/questions/deleteQuestions/${questionId}`, {
         method: 'POST',
         credentials: 'include',
       });

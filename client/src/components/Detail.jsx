@@ -67,7 +67,7 @@ const Detail = () => {
   useEffect(() => {
     const fetchQuestion = async () => {
       try {
-        const response = await fetch(`http://localhost:4000/api/v1/questions/getQuestions/${id}`);
+        const response = await fetch(`https://odoo-hackathon-2025-team-qwerty-masters.onrender.com/api/v1/questions/getQuestions/${id}`);
         if (response.ok) {
           const data = await response.json();
           setQuestion(data.question);
@@ -86,7 +86,7 @@ const Detail = () => {
   useEffect(() => {
     const fetchAnswers = async () => {
       try {
-        const response = await fetch(`http://localhost:4000/api/v1/answers/getAnswers/${id}`);
+        const response = await fetch(`https://odoo-hackathon-2025-team-qwerty-masters.onrender.com/api/v1/answers/getAnswers/${id}`);
         if (response.ok) {
           const data = await response.json();
           setAnswers(data.answers || []);
@@ -107,7 +107,7 @@ const Detail = () => {
     if (!newAnswer.trim()) return;
     
     try {
-      const response = await fetch('http://localhost:4000/api/v1/answers/addAnswer', {
+      const response = await fetch('https://odoo-hackathon-2025-team-qwerty-masters.onrender.com/api/v1/answers/addAnswer', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -122,7 +122,7 @@ const Detail = () => {
       if (response.ok) {
         const data = await response.json();
     
-        const answersResponse = await fetch(`http://localhost:4000/api/v1/answers/getAnswers/${id}`);
+        const answersResponse = await fetch(`https://odoo-hackathon-2025-team-qwerty-masters.onrender.com/api/v1/answers/getAnswers/${id}`);
         if (answersResponse.ok) {
           const answersData = await answersResponse.json();
           setAnswers(answersData.answers || []);
@@ -144,7 +144,7 @@ const Detail = () => {
     if (!editText.trim()) return;
 
     try {
-      const response = await fetch(`http://localhost:4000/api/v1/answers/updateAnswer/${answerId}`, {
+      const response = await fetch(`https://odoo-hackathon-2025-team-qwerty-masters.onrender.com/api/v1/answers/updateAnswer/${answerId}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -157,7 +157,7 @@ const Detail = () => {
 
       if (response.ok) {
        
-        const answersResponse = await fetch(`http://localhost:4000/api/v1/answers/getAnswers/${id}`);
+        const answersResponse = await fetch(`https://odoo-hackathon-2025-team-qwerty-masters.onrender.com/api/v1/answers/getAnswers/${id}`);
         if (answersResponse.ok) {
           const answersData = await answersResponse.json();
           setAnswers(answersData.answers || []);
@@ -180,14 +180,14 @@ const Detail = () => {
     if (!window.confirm('Are you sure you want to delete this answer?')) return;
 
     try {
-      const response = await fetch(`http://localhost:4000/api/v1/answers/deleteAnswer/${answerId}`, {
+      const response = await fetch(`https://odoo-hackathon-2025-team-qwerty-masters.onrender.com/api/v1/answers/deleteAnswer/${answerId}`, {
         method: 'POST',
         credentials: 'include',
       });
 
       if (response.ok) {
       
-        const answersResponse = await fetch(`http://localhost:4000/api/v1/answers/getAnswers/${id}`);
+        const answersResponse = await fetch(`https://odoo-hackathon-2025-team-qwerty-masters.onrender.com/api/v1/answers/getAnswers/${id}`);
         if (answersResponse.ok) {
           const answersData = await answersResponse.json();
           setAnswers(answersData.answers || []);
@@ -208,14 +208,14 @@ const Detail = () => {
     if (!isAuthenticated) return;
     
     try {
-      const response = await fetch(`http://localhost:4000/api/v1/questions/upvoteQuestions/${id}`, {
+      const response = await fetch(`https://odoo-hackathon-2025-team-qwerty-masters.onrender.com/api/v1/questions/upvoteQuestions/${id}`, {
         method: 'POST',
         credentials: 'include',
       });
 
       if (response.ok) {
        
-        const questionResponse = await fetch(`http://localhost:4000/api/v1/questions/getQuestions/${id}`);
+        const questionResponse = await fetch(`https://odoo-hackathon-2025-team-qwerty-masters.onrender.com/api/v1/questions/getQuestions/${id}`);
         if (questionResponse.ok) {
           const data = await questionResponse.json();
           setQuestion(data.question);
