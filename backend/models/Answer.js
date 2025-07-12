@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 
+
 const answerSchema = new mongoose.Schema({
     user: {
         type: mongoose.Schema.Types.ObjectId,
@@ -19,6 +20,11 @@ const answerSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
     }],
+    moderationStatus: {
+        type: String,
+        enum: ['pending', 'approved', 'flagged'],
+        default: 'pending',
+    }
 }, {
     timestamps: true,
 });

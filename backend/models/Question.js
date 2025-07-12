@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 
+
 const questionSchema = new mongoose.Schema({
     user: {
         type: mongoose.Schema.Types.ObjectId,
@@ -21,7 +22,7 @@ const questionSchema = new mongoose.Schema({
         required: true,
     }],
     image: {
-        type: String, 
+        type: String,
     },
     answers: [{
         type: mongoose.Schema.Types.ObjectId,
@@ -30,7 +31,12 @@ const questionSchema = new mongoose.Schema({
     upvotes: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
-    }]
+    }],
+    moderationStatus: {
+        type: String,
+        enum: ['pending', 'approved', 'flagged'],
+        default: 'pending',
+    }
 }, {
     timestamps: true,
 });
