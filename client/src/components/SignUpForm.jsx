@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import { signup } from '../api';
 
 const SignUpForm = () => {
   const navigate = useNavigate();
@@ -14,6 +14,7 @@ const SignUpForm = () => {
     password: '',
     confirmPassword: ''
   });
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -21,13 +22,9 @@ const SignUpForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
+    setLoading(true);
     try {
-      const res = await axios.post(
-        'https://odoo-hackathon-2025-team-qwerty-masters.onrender.com/api/v1/auth/signup',
-        formData,
-        { withCredentials: true }
-      );
+      const res = await signup(formData);
       console.log('Signup successful:', res.data);
       alert('Signup successful! Please log in.');
       navigate('/login');
@@ -35,6 +32,7 @@ const SignUpForm = () => {
       console.error('Signup error:', err.response?.data?.message || err.message);
       alert(err.response?.data?.message || 'Signup failed');
     }
+    setLoading(false);
   };
 
   return (
@@ -44,26 +42,66 @@ const SignUpForm = () => {
 
         <h2 className="text-2xl font-bold text-center text-white mb-4 animate-pulse">Sign Up</h2>
         <form onSubmit={handleSubmit} className="space-y-3">
-          {[
-            { label: 'First Name', name: 'firstName', type: 'text', placeholder: 'First name' },
-            { label: 'Last Name', name: 'lastName', type: 'text', placeholder: 'Last name' },
-            { label: 'Email', name: 'email', type: 'email', placeholder: 'Email' },
-            { label: 'Password', name: 'password', type: 'password', placeholder: 'Password' },
-            { label: 'Confirm Password', name: 'confirmPassword', type: 'password', placeholder: 'Confirm password' }
-          ].map(field => (
-            <div key={field.name}>
-              <label htmlFor={field.name} className="block text-xs text-gray-200 mb-1">{field.label}</label>
-              <input
-                {...field}
-                id={field.name}
-                value={formData[field.name]}
-                onChange={handleChange}
-                required
-                className="w-full px-3 py-2 bg-white/10 border border-gray-300/20 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 placeholder-gray-400 text-white text-sm"
-              />
-            </div>
-          ))}
-
+          <div>
+            <label htmlFor="firstName" className="block text-xs text-gray-200 mb-1">First Name</label>
+            <input
+              type="text"
+              name="firstName"
+              id="firstName"
+              value={formData.firstName}
+              onChange={handleChange}
+              className="w-full px-3 py-2 rounded-lg bg-white/80 text-black focus:outline-none focus:ring-2 focus:ring-purple-400"
+              required
+            />
+          </div>
+          <div>
+            <label htmlFor="lastName" className="block text-xs text-gray-200 mb-1">Last Name</label>
+            <input
+              type="text"
+              name="lastName"
+              id="lastName"
+              value={formData.lastName}
+              onChange={handleChange}
+              className="w-full px-3 py-2 rounded-lg bg-white/80 text-black focus:outline-none focus:ring-2 focus:ring-purple-400"
+              required
+            />
+          </div>
+          <div>
+            <label htmlFor="email" className="block text-xs text-gray-200 mb-1">Email</label>
+            <input
+              type="email"
+              name="email"
+              id="email"
+              value={formData.email}
+              onChange={handleChange}
+              className="w-full px-3 py-2 rounded-lg bg-white/80 text-black focus:outline-none focus:ring-2 focus:ring-purple-400"
+              required
+            />
+          </div>
+          <div>
+            <label htmlFor="password" className="block text-xs text-gray-200 mb-1">Password</label>
+            <input
+              type="password"
+              name="password"
+              id="password"
+              value={formData.password}
+              onChange={handleChange}
+              className="w-full px-3 py-2 rounded-lg bg-white/80 text-black focus:outline-none focus:ring-2 focus:ring-purple-400"
+              required
+            />
+          </div>
+          <div>
+            <label htmlFor="confirmPassword" className="block text-xs text-gray-200 mb-1">Confirm Password</label>
+            <input
+              type="password"
+              name="confirmPassword"
+              id="confirmPassword"
+              value={formData.confirmPassword}
+              onChange={handleChange}
+              className="w-full px-3 py-2 rounded-lg bg-white/80 text-black focus:outline-none focus:ring-2 focus:ring-purple-400"
+              required
+            />
+          </div>
           <div>
             <label htmlFor="gender" className="block text-xs text-gray-200 mb-1">Gender</label>
             <select
@@ -71,15 +109,14 @@ const SignUpForm = () => {
               name="gender"
               value={formData.gender}
               onChange={handleChange}
+              className="w-full px-3 py-2 rounded-lg bg-white/80 text-black focus:outline-none focus:ring-2 focus:ring-purple-400"
               required
-              className="w-full px-3 py-2 bg-purple-700/30 border border-gray-300/20 rounded-md text-white text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
             >
               <option value="male">Male</option>
               <option value="female">Female</option>
               <option value="other">Other</option>
             </select>
           </div>
-
           <div>
             <label htmlFor="role" className="block text-xs text-gray-200 mb-1">Role</label>
             <select
@@ -87,31 +124,38 @@ const SignUpForm = () => {
               name="role"
               value={formData.role}
               onChange={handleChange}
+              className="w-full px-3 py-2 rounded-lg bg-white/80 text-black focus:outline-none focus:ring-2 focus:ring-purple-400"
               required
-              className="w-full px-3 py-2 bg-purple-700/30 border border-gray-300/20 rounded-md text-white text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
             >
               <option value="user">User</option>
               <option value="admin">Admin</option>
             </select>
           </div>
-
           <button
             type="submit"
-            className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-2 rounded-md hover:from-purple-700 hover:to-indigo-700 transition-all duration-300 text-sm font-semibold shadow-md hover:shadow-lg"
+            className="w-full py-2 px-4 bg-purple-700 text-white rounded-lg font-semibold hover:bg-purple-800 transition duration-300"
+            disabled={loading}
           >
-            Sign Up
+            {loading ? (
+              <span className="flex items-center justify-center">
+                <svg className="animate-spin h-5 w-5 mr-2 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                </svg>
+                Signing up...
+              </span>
+            ) : (
+              'Sign Up'
+            )}
           </button>
         </form>
-
-        <p className="mt-3 text-center text-xs text-gray-300">
+        <p className="mt-4 text-center text-gray-200">
           Already have an account?{' '}
-          <Link to="/login" className="text-purple-300 hover:text-purple-400 underline">
-            Log in
-          </Link>
+          <Link to="/login" className="text-purple-300 hover:underline">Login</Link>
         </p>
       </div>
     </div>
   );
-};
+}
 
 export default SignUpForm;

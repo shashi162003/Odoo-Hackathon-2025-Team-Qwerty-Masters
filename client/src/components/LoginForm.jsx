@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import { login, generateOTP } from '../api';
 
 const LoginForm = () => {
   const navigate = useNavigate();
@@ -16,37 +16,31 @@ const LoginForm = () => {
     setFormData({ ...formData, [name]: type === 'checkbox' ? checked : value });
   };
 
+  const [loading, setLoading] = useState(false);
   const handleSubmit = async (e) => {
     e.preventDefault();
-
+    setLoading(true);
+    let token;
     try {
-      const res = await axios.post(
-        'https://odoo-hackathon-2025-team-qwerty-masters.onrender.com/api/v1/auth/login',
-        { email: formData.email, password: formData.password },
-        { withCredentials: true }
-      );
-
+      const res = await login({ email: formData.email, password: formData.password });
       console.log('Login successful:', res.data);
+      token = res.data.token;
     } catch (err) {
       console.error('Login request failed:', err.response?.data || err.message);
       alert('Login failed: ' + (err.response?.data?.message || err.message));
+      setLoading(false);
       return;
     }
-
     try {
-      await axios.post(
-        'https://odoo-hackathon-2025-team-qwerty-masters.onrender.com/api/v1/auth/generate-otp',
-        { email: formData.email },
-        { withCredentials: true }
-      );
+      await generateOTP({ email: formData.email }, token);
     } catch (err) {
       console.error('OTP request failed:', err.response?.data || err.message);
       alert('OTP request failed: ' + (err.response?.data?.message || err.message));
+      setLoading(false);
       return;
     }
-
-    // 🧭 Navigate to OTP Verification Page with email state
-    navigate('/verify-otp', { state: { email: formData.email } });
+    setLoading(false);
+    navigate('/verify-otp', { state: { email: formData.email, token } });
   };
 
   return (
@@ -107,17 +101,25 @@ const LoginForm = () => {
 
           <button
             type="submit"
-            className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-2 rounded-md hover:from-purple-700 hover:to-indigo-700 transition-all duration-300 text-sm font-semibold shadow-md hover:shadow-lg"
+            className="w-full py-2 px-4 bg-purple-700 text-white rounded-lg font-semibold hover:bg-purple-800 transition duration-300 flex items-center justify-center"
+            disabled={loading}
           >
-            Log In
+            {loading ? (
+              <span className="flex items-center justify-center">
+                <svg className="animate-spin h-5 w-5 mr-2 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                </svg>
+                Logging in...
+              </span>
+            ) : (
+              'Log In'
+            )}
           </button>
         </form>
-
-        <p className="mt-3 text-center text-xs text-gray-300">
-          Don’t have an account?{' '}
-          <Link to="/signup" className="text-purple-300 hover:text-purple-400 underline">
-            Sign Up
-          </Link>
+        <p className="mt-4 text-center text-gray-200">
+          Don't have an account?{' '}
+          <Link to="/signup" className="text-purple-300 hover:underline">Sign Up</Link>
         </p>
       </div>
     </div>

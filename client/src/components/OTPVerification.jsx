@@ -1,7 +1,11 @@
 import { useState } from 'react';
-import axios from 'axios';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { verifyOTP } from '../api';
 
 const VerifyOTP = ({ onVerified }) => {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const token = location.state?.token || '';
   const [otp, setOtp] = useState('');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
@@ -9,13 +13,17 @@ const VerifyOTP = ({ onVerified }) => {
   const handleVerify = async () => {
     setLoading(true);
     try {
-      const response = await axios.post('https://odoo-hackathon-2025-team-qwerty-masters.onrender.com/api/v1/auth/verify-otp', { otp }, {
-        withCredentials: true, // ✅ Send cookie token
-      });
+      console.log('Token:', token);
+      const response = await verifyOTP({ otp }, token);
       setMessage(response.data.message);
-      onVerified(); // ✅ Callback after successful verification
+      if (typeof onVerified === 'function') {
+        onVerified();
+      } else {
+        navigate('/home');
+      }
     } catch (error) {
       setMessage(error.response?.data?.message || 'Verification failed');
+      console.error('OTP Verify Error:', error.response?.data || error.message);
     }
     setLoading(false);
   };
@@ -44,13 +52,22 @@ const VerifyOTP = ({ onVerified }) => {
         <button
           onClick={handleVerify}
           disabled={loading}
-          className="w-full bg-gradient-to-r from-green-600 to-teal-600 text-white py-2 rounded-md hover:from-green-700 hover:to-teal-700 transition-all duration-300 text-sm font-semibold shadow-md hover:shadow-lg disabled:opacity-60"
+          className="w-full py-2 px-4 bg-purple-700 text-white rounded-lg font-semibold hover:bg-purple-800 transition duration-300 flex items-center justify-center"
         >
-          {loading ? 'Verifying...' : 'Verify OTP'}
+          {loading ? (
+            <span className="flex items-center justify-center">
+              <svg className="animate-spin h-5 w-5 mr-2 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+              </svg>
+              Verifying...
+            </span>
+          ) : (
+            'Verify OTP'
+          )}
         </button>
-
         {message && (
-          <p className="mt-3 text-center text-sm text-white">{message}</p>
+          <div className="mt-4 text-center text-sm text-white">{message}</div>
         )}
       </div>
     </div>

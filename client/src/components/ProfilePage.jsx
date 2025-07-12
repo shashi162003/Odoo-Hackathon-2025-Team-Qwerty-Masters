@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import axios from 'axios';
+import { getProfile, updateProfile } from '../api';
 
 const ProfilePage = () => {
   const { id } = useParams();
@@ -12,7 +12,7 @@ const ProfilePage = () => {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const res = await axios.get(`https://odoo-hackathon-2025-team-qwerty-masters.onrender.com/api/v1/profile/getProfile/${id}`);
+        const res = await getProfile(id);
         setFormData(res.data.user);
         setLoading(false);
       } catch (err) {
@@ -24,7 +24,7 @@ const ProfilePage = () => {
     fetchProfile();
   }, [id]);
 
-   if (loading) {
+  if (loading) {
     return <div className="text-white text-center mt-10">Loading...</div>;
   }
 
@@ -39,17 +39,29 @@ const ProfilePage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
     try {
-      const res = await axios.put(`https://odoo-hackathon-2025-team-qwerty-masters.onrender.com/api/v1/profile/updateProfile/${id}`, formData);
+      const res = await updateProfile(id, formData);
       setMessage('Profile updated successfully');
       setFormData(res.data.user);
     } catch (err) {
       console.error(err);
       setMessage('Failed to update profile');
     }
+    setLoading(false);
   };
 
-  if (loading) return <div className="text-white text-center mt-10">Loading...</div>;
+  if (loading) return (
+    <div className="flex justify-center items-center min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-black">
+      <span className="text-white text-xl flex items-center">
+        <svg className="animate-spin h-8 w-8 mr-2 text-purple-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+        </svg>
+        Loading...
+      </span>
+    </div>
+  );
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-900 via-purple-900 to-black">

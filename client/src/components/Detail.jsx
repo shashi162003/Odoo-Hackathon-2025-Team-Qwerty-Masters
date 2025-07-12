@@ -1,16 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { getQuestionById, getAnswers, addAnswer, updateAnswer, deleteAnswer, upvoteQuestion } from '../api';
 
 const Detail = () => {
   const { id } = useParams();
   const [question, setQuestion] = useState(null);
   const [answers, setAnswers] = useState([]);
-  const [newAnswer, setNewAnswer] = useState('');
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  // Removed unused newAnswer state
+  const [isAuthenticated, setIsAuthenticated] = useState(true);
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [editingAnswer, setEditingAnswer] = useState(null);
   const [editText, setEditText] = useState('');
+  const [message, setMessage] = useState('');
+  const [answerText, setAnswerText] = useState('');
 
 
   const getCookie = (name) => {
@@ -20,159 +23,96 @@ const Detail = () => {
     return null;
   };
 
-  const decodeJWT = (token) => {
-    try {
-      const base64Url = token.split('.')[1];
-      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-      const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
-        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-      }).join(''));
-      return JSON.parse(jsonPayload);
-    } catch (error) {
-      return null;
-    }
-  };
 
-
-  useEffect(() => {
-    const checkAuth = () => {
-      const token = getCookie('token');
-      
-      if (token) {
-        const decoded = decodeJWT(token);
-        
-        if (decoded && decoded.exp > Date.now() / 1000) {
-      
-          setIsAuthenticated(true);
-          setCurrentUser({
-            id: decoded.id,
-            email: decoded.email
-          });
-        } else {
-       
-          setIsAuthenticated(false);
-          setCurrentUser(null);
-        }
-      } else {
-   
-        setIsAuthenticated(false);
-        setCurrentUser(null);
-      }
-    };
-    
-    checkAuth();
-  }, []);
+  // Authentication check disabled for adding answers
 
 
   useEffect(() => {
     const fetchQuestion = async () => {
       try {
-        const response = await fetch(`https://odoo-hackathon-2025-team-qwerty-masters.onrender.com/api/v1/questions/getQuestions/${id}`);
-        if (response.ok) {
-          const data = await response.json();
-          setQuestion(data.question);
-        }
-      } catch (error) {
-        console.error('Failed to fetch question:', error);
-      }
-    };
-    
-    if (id) {
-      fetchQuestion();
-    }
-  }, [id]);
-
- 
-  useEffect(() => {
-    const fetchAnswers = async () => {
-      try {
-        const response = await fetch(`https://odoo-hackathon-2025-team-qwerty-masters.onrender.com/api/v1/answers/getAnswers/${id}`);
-        if (response.ok) {
-          const data = await response.json();
-          setAnswers(data.answers || []);
-        }
-      } catch (error) {
-        console.error('Failed to fetch answers:', error);
+        const response = await getQuestionById(id);
+        const data = response.data;
+        setQuestion(data.question);
+      } catch {
+        setQuestion(null);
       } finally {
         setLoading(false);
       }
     };
 
     if (id) {
-      fetchAnswers();
+      fetchQuestion();
     }
   }, [id]);
 
-  const handleAddAnswer = async () => {
-    if (!newAnswer.trim()) return;
-    
-    try {
-      const response = await fetch('https://odoo-hackathon-2025-team-qwerty-masters.onrender.com/api/v1/answers/addAnswer', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          answer: newAnswer,
-          questionId: id
-        })
-      });
 
-      if (response.ok) {
-        const data = await response.json();
-    
-        const answersResponse = await fetch(`https://odoo-hackathon-2025-team-qwerty-masters.onrender.com/api/v1/answers/getAnswers/${id}`);
-        if (answersResponse.ok) {
-          const answersData = await answersResponse.json();
-          setAnswers(answersData.answers || []);
-        }
-        setNewAnswer('');
-      } else if (response.status === 401) {
-        alert('Please login to add an answer');
-        setIsAuthenticated(false);
-        setCurrentUser(null);
+  // Helper to fetch answers and update state
+  const fetchAnswers = async () => {
+    try {
+      const response = await getAnswers(question._id);
+      setAnswers(response.data.answers || []);
+    } catch {
+      // error intentionally ignored
+    }
+  };
+
+  useEffect(() => {
+    if (question) {
+      fetchAnswers();
+    }
+  }, [question]);
+
+  const handleAddAnswer = async () => {
+    if (!answerText.trim()) return;
+    setLoading(true);
+    setMessage('');
+    try {
+      const token = localStorage.getItem('token');
+      const response = await addAnswer({ answer: answerText, questionId: question._id }, token);
+      if (response.data && response.data.success) {
+        setMessage('Answer added!');
+        setAnswerText('');
+        fetchAnswers();
       } else {
-        console.error('Failed to add answer');
+        setMessage(response.data?.message || 'Failed to add answer');
       }
     } catch (error) {
-      console.error('Error adding answer:', error);
+      setMessage(error.response?.data?.message || 'Failed to add answer');
+      console.error('Add Answer Error:', error.response?.data || error.message, error);
+      // Optimistically fetch answers if error is 500 (answer may have been added)
+      if (error.response && error.response.status === 500) {
+        setTimeout(() => {
+          fetchAnswers();
+        }, 500);
+        setMessage('Answer may have been added. Please refresh if not visible.');
+      }
     }
+    setLoading(false);
   };
 
   const handleUpdateAnswer = async (answerId) => {
     if (!editText.trim()) return;
 
     try {
-      const response = await fetch(`https://odoo-hackathon-2025-team-qwerty-masters.onrender.com/api/v1/answers/updateAnswer/${answerId}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          answer: editText
-        })
-      });
+      const token = getCookie('token');
+      const response = await updateAnswer(answerId, { answer: editText }, token);
+      if (response.data.success) {
 
-      if (response.ok) {
-       
-        const answersResponse = await fetch(`https://odoo-hackathon-2025-team-qwerty-masters.onrender.com/api/v1/answers/getAnswers/${id}`);
-        if (answersResponse.ok) {
-          const answersData = await answersResponse.json();
-          setAnswers(answersData.answers || []);
-        }
+        const answersResponse = await getAnswers(id);
+        setAnswers(answersResponse.data.answers || []);
         setEditingAnswer(null);
         setEditText('');
-      } else if (response.status === 401) {
+      } else {
+        alert('Failed to update answer');
+      }
+    } catch (error) {
+      if (error.response && error.response.status === 401) {
         alert('You are not authorized to update this answer');
         setIsAuthenticated(false);
         setCurrentUser(null);
       } else {
-        console.error('Failed to update answer');
+        console.error('Error updating answer:', error);
       }
-    } catch (error) {
-      console.error('Error updating answer:', error);
     }
   };
 
@@ -180,53 +120,42 @@ const Detail = () => {
     if (!window.confirm('Are you sure you want to delete this answer?')) return;
 
     try {
-      const response = await fetch(`https://odoo-hackathon-2025-team-qwerty-masters.onrender.com/api/v1/answers/deleteAnswer/${answerId}`, {
-        method: 'POST',
-        credentials: 'include',
-      });
+      const token = getCookie('token');
+      const response = await deleteAnswer(answerId, token);
+      if (response.data.success) {
 
-      if (response.ok) {
-      
-        const answersResponse = await fetch(`https://odoo-hackathon-2025-team-qwerty-masters.onrender.com/api/v1/answers/getAnswers/${id}`);
-        if (answersResponse.ok) {
-          const answersData = await answersResponse.json();
-          setAnswers(answersData.answers || []);
-        }
-      } else if (response.status === 401) {
+        const answersResponse = await getAnswers(id);
+        setAnswers(answersResponse.data.answers || []);
+      } else {
+        alert('Failed to delete answer');
+      }
+    } catch (error) {
+      if (error.response && error.response.status === 401) {
         alert('You are not authorized to delete this answer');
         setIsAuthenticated(false);
         setCurrentUser(null);
       } else {
-        console.error('Failed to delete answer');
+        console.error('Error deleting answer:', error);
       }
-    } catch (error) {
-      console.error('Error deleting answer:', error);
     }
   };
 
   const handleUpvoteQuestion = async () => {
     if (!isAuthenticated) return;
-    
-    try {
-      const response = await fetch(`https://odoo-hackathon-2025-team-qwerty-masters.onrender.com/api/v1/questions/upvoteQuestions/${id}`, {
-        method: 'POST',
-        credentials: 'include',
-      });
 
-      if (response.ok) {
-       
-        const questionResponse = await fetch(`https://odoo-hackathon-2025-team-qwerty-masters.onrender.com/api/v1/questions/getQuestions/${id}`);
-        if (questionResponse.ok) {
-          const data = await questionResponse.json();
-          setQuestion(data.question);
-        }
-      } else if (response.status === 401) {
+    try {
+      const token = getCookie('token');
+      await upvoteQuestion(id, token);
+      const questionResponse = await getQuestionById(id);
+      setQuestion(questionResponse.data.question);
+    } catch (error) {
+      if (error.response && error.response.status === 401) {
         alert('Please login to upvote');
         setIsAuthenticated(false);
         setCurrentUser(null);
+      } else {
+        console.error('Error upvoting question:', error);
       }
-    } catch (error) {
-      console.error('Error upvoting question:', error);
     }
   };
 
@@ -245,10 +174,10 @@ const Detail = () => {
     if (!isAuthenticated || !currentUser || !answer.user) {
       return false;
     }
-    
+
     const answerUserId = answer.user._id || answer.user.id || answer.user;
     const currentUserId = currentUser.id;
-    
+
     return answerUserId.toString() === currentUserId.toString();
   };
 
@@ -265,9 +194,21 @@ const Detail = () => {
       {question ? (
         <div className="max-w-4xl mx-auto bg-[#0f0f0f] rounded-2xl border border-gray-700 p-6 shadow-md">
           <h1 className="text-2xl font-bold text-cyan-400 mb-2">{question.title}</h1>
-          <p className="text-sm text-gray-300 mb-4">{question.description}</p>
+          {question.image && (
+            <div className="mb-4">
+              <img
+                src={question.image}
+                alt="Question attachment"
+                className="max-w-full h-48 object-cover rounded-lg border border-gray-600"
+              />
+            </div>
+          )}
+          <div
+            className="text-sm text-gray-300 mb-4"
+            dangerouslySetInnerHTML={{ __html: question.description }}
+          />
 
-       
+
           {question.tags && question.tags.length > 0 && (
             <div className="flex flex-wrap gap-2 mb-4">
               {question.tags.map((tag, index) => (
@@ -295,7 +236,7 @@ const Detail = () => {
             <h2 className="text-lg font-semibold text-cyan-300 mb-3">
               Answers ({answers.length})
             </h2>
-            
+
             {answers.length === 0 ? (
               <p className="text-gray-400 text-center py-8">No answers yet. Be the first to answer!</p>
             ) : (
@@ -305,13 +246,15 @@ const Detail = () => {
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
                         <h3 className="text-md font-semibold text-cyan-200">
-                          {answer.user?.name || (answer.user?.firstName + ' ' + answer.user?.lastName) || 'Anonymous'}
+                          {answer.user?.firstName && answer.user?.lastName
+                            ? `${answer.user.firstName} ${answer.user.lastName}`
+                            : 'Anonymous'}
                         </h3>
                         <span className="text-xs text-gray-400">
                           {new Date(answer.createdAt).toLocaleDateString()}
                         </span>
                       </div>
-                      
+
                       {editingAnswer === answer._id ? (
                         <div className="space-y-2">
                           <textarea
@@ -339,7 +282,7 @@ const Detail = () => {
                         <p className="text-sm text-gray-300 whitespace-pre-wrap">{answer.answer}</p>
                       )}
                     </div>
-                    
+
                     <div className="flex items-center gap-2">
                       <img
                         src={`https://api.dicebear.com/7.x/thumbs/svg?seed=${answer.user?.name || answer.user?.firstName + ' ' + answer.user?.lastName || 'anonymous'}`}
@@ -353,8 +296,8 @@ const Detail = () => {
                     <span className="text-xs text-gray-400">
                       {answer.upvotes?.length || 0} upvotes
                     </span>
-                    
-                    
+
+
                     {isAnswerOwner(answer) && (
                       <div className="flex gap-2">
                         <button
@@ -382,19 +325,20 @@ const Detail = () => {
             <div className="mt-8">
               <h3 className="text-md font-semibold text-cyan-300 mb-2">Your Answer</h3>
               <textarea
-                value={newAnswer}
-                onChange={(e) => setNewAnswer(e.target.value)}
+                className="w-full p-2 rounded bg-gray-800 text-white border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-600"
+                rows={4}
+                value={answerText}
+                onChange={e => setAnswerText(e.target.value)}
                 placeholder="Type your answer here..."
-                className="w-full p-3 rounded-lg bg-[#1f1f1f] border border-gray-700 text-white"
-                rows="4"
               />
               <button
+                className="mt-2 px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white rounded"
                 onClick={handleAddAnswer}
-                disabled={!newAnswer.trim()}
-                className="mt-2 px-4 py-2 bg-cyan-600 hover:bg-cyan-500 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-xl text-sm"
+                disabled={loading || !answerText.trim()}
               >
-                Submit Answer
+                {loading ? 'Submitting...' : 'Add Answer'}
               </button>
+              {message && <div className="mt-2 text-sm text-green-400">{message}</div>}
             </div>
           ) : (
             <div className="mt-8 text-center">

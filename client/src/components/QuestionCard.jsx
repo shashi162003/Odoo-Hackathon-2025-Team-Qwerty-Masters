@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { upvoteQuestion } from '../api';
 
 const QuestionCard = ({ question, currentUser, isAuthenticated, onDelete, isOwner }) => {
   const navigate = useNavigate();
@@ -9,47 +10,50 @@ const QuestionCard = ({ question, currentUser, isAuthenticated, onDelete, isOwne
   };
 
   const handleDeleteClick = (e) => {
-    e.stopPropagation(); 
+    e.stopPropagation();
     onDelete(question._id);
   };
 
   const handleUpvoteClick = async (e) => {
-    e.stopPropagation(); 
-    
+    e.stopPropagation();
+
     if (!isAuthenticated) {
       alert('Please login to upvote');
       return;
     }
 
     try {
-      const response = await fetch(`https://odoo-hackathon-2025-team-qwerty-masters.onrender.com/api/v1/questions/upvoteQuestions/${question._id}`, {
-        method: 'POST',
-        credentials: 'include',
-      });
-
-      if (response.ok) {
-     
-        window.location.reload(); 
-      } else if (response.status === 401) {
-        alert('Please login to upvote');
-      }
+      // Get token from cookie
+      const getCookie = (name) => {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop().split(';').shift();
+        return null;
+      };
+      const token = getCookie('token');
+      await upvoteQuestion(question._id, token);
+      window.location.reload();
     } catch (error) {
-      console.error('Upvote error:', error);
+      if (error.response && error.response.status === 401) {
+        alert('Please login to upvote');
+      } else {
+        console.error('Upvote error:', error);
+      }
     }
   };
 
   return (
-    <div 
+    <div
       className="bg-[#0f0f0f] rounded-2xl border border-gray-700 p-6 shadow-md hover:border-cyan-500 transition-all cursor-pointer group"
       onClick={handleQuestionClick}
     >
-    
+
       <div className="flex justify-between items-start mb-3">
         <h2 className="text-xl font-bold text-cyan-400 group-hover:text-cyan-300 transition-colors flex-1 mr-4">
           {question.title}
         </h2>
-        
-        
+
+
         {isAuthenticated && isOwner && (
           <button
             onClick={handleDeleteClick}
@@ -61,12 +65,12 @@ const QuestionCard = ({ question, currentUser, isAuthenticated, onDelete, isOwne
         )}
       </div>
 
-   
+
       <p className="text-gray-300 mb-4 line-clamp-3">
         {question.description}
       </p>
 
- 
+
       {question.tags && question.tags.length > 0 && (
         <div className="flex flex-wrap gap-2 mb-4">
           {question.tags.map((tag) => (
@@ -80,7 +84,7 @@ const QuestionCard = ({ question, currentUser, isAuthenticated, onDelete, isOwne
         </div>
       )}
 
-    
+
       {question.image && (
         <div className="mb-4">
           <img
@@ -91,10 +95,10 @@ const QuestionCard = ({ question, currentUser, isAuthenticated, onDelete, isOwne
         </div>
       )}
 
-  
+
       <div className="flex items-center justify-between text-sm text-gray-400">
         <div className="flex items-center gap-4">
-        
+
           <div className="flex items-center gap-2">
             <img
               src={`https://api.dicebear.com/7.x/thumbs/svg?seed=${question.user?.name || question.user?.firstName + ' ' + question.user?.lastName || 'anonymous'}`}
@@ -104,13 +108,13 @@ const QuestionCard = ({ question, currentUser, isAuthenticated, onDelete, isOwne
             <span>{question.user?.name || (question.user?.firstName + ' ' + question.user?.lastName) || 'Anonymous'}</span>
           </div>
 
-        
+
           <span>📅 {new Date(question.createdAt).toLocaleDateString()}</span>
 
           <span>💬 {question.answers?.length || 0} answers</span>
         </div>
 
-     
+
         <div className="flex items-center gap-2">
           {isAuthenticated ? (
             <button
@@ -130,7 +134,7 @@ const QuestionCard = ({ question, currentUser, isAuthenticated, onDelete, isOwne
         </div>
       </div>
 
-     
+
       {question.answers && question.answers.length > 0 && (
         <div className="mt-4 pt-4 border-t border-gray-700">
           <p className="text-xs text-gray-500 mb-1">Latest answer:</p>

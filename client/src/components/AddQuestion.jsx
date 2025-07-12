@@ -1,68 +1,34 @@
-import { useState } from 'react';
-import { EditorContent, useEditor } from '@tiptap/react';
-import StarterKit from '@tiptap/starter-kit';
-import Image from '@tiptap/extension-image';
-import Placeholder from '@tiptap/extension-placeholder';
+import React, { useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { createQuestion } from '../api';
+
 const CLOUDINARY_UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
 const CLOUDINARY_CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
 
-
 const AddQuestion = () => {
   const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
   const [tags, setTags] = useState([]);
   const [tagInput, setTagInput] = useState('');
-  const [uploadedImageName, setUploadedImageName] = useState('');
-  const [uploadedImageUrl, setUploadedImageUrl] = useState('');
+  const [imageUrl, setImageUrl] = useState('');
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const navigate = useNavigate();
+  const fileInputRef = useRef();
 
-  const editor = useEditor({
-    extensions: [
-      StarterKit,
-      Image,
-      Placeholder.configure({
-        placeholder: 'Add description...',
-      }),
-    ],
-    content: '',
-  });
+  const token = localStorage.getItem('token');
+  const isAuthenticated = !!token;
 
-  const addImage = async () => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*';
-    input.click();
-
-    input.onchange = async () => {
-      const file = input.files?.[0];
-      if (!file) return;
-
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
-
-      try {
-        setIsUploading(true);
-        const res = await fetch(
-          `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
-          {
-            method: 'POST',
-            body: formData,
-          }
-        );
-        const data = await res.json();
-        setUploadedImageName(file.name);
-        setUploadedImageUrl(data.secure_url);
-        console.log('Image uploaded:', data.secure_url);
-      } catch (err) {
-        console.error('Image upload failed:', err);
-      } finally {
-        setIsUploading(false);
-      }
-    };
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    navigate('/login');
   };
 
+  // Handle tag input
   const handleTagKeyDown = (e) => {
-    if (e.key === 'Enter' && tagInput.trim()) {
+    if ((e.key === 'Enter' || e.key === ',') && tagInput.trim()) {
       e.preventDefault();
       if (!tags.includes(tagInput.trim())) {
         setTags([...tags, tagInput.trim()]);
@@ -71,145 +37,169 @@ const AddQuestion = () => {
     }
   };
 
-  const removeTag = (tagToRemove) => {
-    setTags(tags.filter((t) => t !== tagToRemove));
+  const removeTag = (tag) => {
+    setTags(tags.filter(t => t !== tag));
   };
 
+  // Handle image upload to Cloudinary
+  const handleImageChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setIsUploading(true);
+    setUploadProgress(0);
+    setError('');
+    setSuccess('');
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+    try {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`);
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable) {
+          setUploadProgress(Math.round((event.loaded / event.total) * 100));
+        }
+      };
+      xhr.onload = () => {
+        setIsUploading(false);
+        if (xhr.status === 200) {
+          const res = JSON.parse(xhr.responseText);
+          setImageUrl(res.secure_url);
+          setSuccess('Image uploaded!');
+        } else {
+          setError('Image upload failed.');
+        }
+      };
+      xhr.onerror = () => {
+        setIsUploading(false);
+        setError('Image upload failed.');
+      };
+      xhr.send(formData);
+    } catch {
+      setIsUploading(false);
+      setError('Image upload failed.');
+    }
+  };
+
+  // Handle form submit
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const content = editor?.getHTML();
-
+    setError('');
+    setSuccess('');
+    if (!title.trim() || !description.trim()) {
+      setError('Title and description are required.');
+      return;
+    }
+    if (isUploading) {
+      setError('Please wait for the image to finish uploading.');
+      return;
+    }
+    const token = localStorage.getItem('token');
+    if (!token) {
+      setError('You must be logged in to add a question.');
+      return;
+    }
     const questionData = {
       title,
-      content,
+      description,
       tags,
-      imageUrl: uploadedImageUrl,
+      image: imageUrl,
     };
-
     try {
-      const res = await fetch('https://odoo-hackathon-2025-team-qwerty-masters.onrender.com/api/v1/questions/createQuestion', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(questionData),
-      });
-
-      const result = await res.json();
-      console.log('Submitted:', result);
-
-      // Reset form
-      setTitle('');
-      editor.commands.setContent('');
-      setTags([]);
-      setTagInput('');
-      setUploadedImageName('');
-      setUploadedImageUrl('');
+      await createQuestion(questionData, token);
+      setSuccess('Question added! Redirecting...');
+      setTimeout(() => navigate('/home'), 1200);
     } catch (err) {
-      console.error('Submit failed:', err);
+      setError(err?.response?.data?.message || 'Failed to add question.');
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-900 via-purple-900 to-black p-4">
-      <div className="bg-white/20 backdrop-blur-lg p-8 rounded-3xl shadow-lg w-full max-w-3xl">
-        <h2 className="text-3xl font-bold text-white mb-6 text-center">Ask a Question</h2>
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Title */}
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            className="w-full px-4 py-2 rounded-lg bg-white/10 text-white placeholder-gray-300 border border-gray-400/20 focus:ring-2 focus:ring-purple-500"
-            placeholder="Enter a title"
-            required
-          />
-
-          {/* Editor */}
-         <div
-  className={`rounded-xl border border-gray-400/30 p-4 min-h-[200px] transition-all bg-white/10 text-white placeholder-gray-300 focus-within:ring-2 focus-within:ring-purple-500`}
-  onClick={() => editor?.commands.focus()}
->
-  <EditorContent editor={editor} className="outline-none prose prose-sm max-w-none text-white" />
-</div>
-
-
-          {/* Upload Image Button + File Name Display + Loader */}
-          <div className="flex items-center gap-4">
+    <div className="relative max-w-xl mx-auto mt-10 p-6 bg-gray-900 rounded-lg shadow-lg">
+      {/* Auth Buttons */}
+      <div className="absolute top-4 right-6 flex gap-2">
+        {!isAuthenticated ? (
+          <>
             <button
-              type="button"
-              onClick={addImage}
-              className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded transition duration-200 flex items-center gap-2"
-              disabled={isUploading}
+              className="bg-blue-700 hover:bg-blue-800 text-white px-4 py-1 rounded"
+              onClick={() => navigate('/login')}
             >
-              {isUploading && (
-                <svg
-                  className="animate-spin h-4 w-4 text-white"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  ></circle>
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 00-8 8z"
-                  ></path>
-                </svg>
-              )}
-              Upload Image
+              Login
             </button>
-            {uploadedImageName && (
-              <span className="text-sm text-white">{uploadedImageName} uploaded</span>
-            )}
-          </div>
-
-          {/* Tags */}
-          <div>
-            <label className="block text-white mb-2 font-medium">Tags</label>
-            <div className="flex flex-wrap gap-2">
-              {tags.map((tag) => (
-                <div
-                  key={tag}
-                  className="flex items-center bg-indigo-600 text-white px-3 py-1 rounded-full space-x-2"
-                >
-                  <span>{tag}</span>
-                  <button
-                    type="button"
-                    onClick={() => removeTag(tag)}
-                    className="text-white hover:text-gray-200"
-                  >
-                    &times;
-                  </button>
-                </div>
-              ))}
-              <input
-                type="text"
-                value={tagInput}
-                onChange={(e) => setTagInput(e.target.value)}
-                onKeyDown={handleTagKeyDown}
-                className="px-2 py-1 bg-white/10 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                placeholder="Type tag and press Enter"
-              />
-            </div>
-          </div>
-
-          {/* Submit Button */}
+            <button
+              className="bg-green-700 hover:bg-green-800 text-white px-4 py-1 rounded"
+              onClick={() => navigate('/signup')}
+            >
+              Sign Up
+            </button>
+          </>
+        ) : (
           <button
-            type="submit"
-            className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-3 rounded-xl hover:from-purple-700 hover:to-indigo-700 transition-all duration-300 font-semibold shadow-md hover:shadow-xl"
+            className="bg-red-700 hover:bg-red-800 text-white px-4 py-1 rounded"
+            onClick={handleLogout}
           >
-            Submit
+            Logout
           </button>
-        </form>
+        )}
       </div>
+      <h2 className="text-2xl font-bold mb-6 text-white">Ask a Question</h2>
+      <form onSubmit={handleSubmit}>
+        <label className="block mb-2 text-gray-200">Title</label>
+        <input
+          className="w-full p-2 mb-4 rounded bg-gray-800 text-white border border-gray-700 focus:outline-none"
+          value={title}
+          onChange={e => setTitle(e.target.value)}
+          placeholder="Enter your question title"
+          required
+        />
+        <label className="block mb-2 text-gray-200">Description</label>
+        <textarea
+          className="w-full p-2 mb-4 rounded bg-gray-800 text-white border border-gray-700 focus:outline-none min-h-[120px]"
+          value={description}
+          onChange={e => setDescription(e.target.value)}
+          placeholder="Describe your question in detail (supports markdown or HTML)"
+          required
+        />
+        <label className="block mb-2 text-gray-200">Tags</label>
+        <div className="flex flex-wrap gap-2 mb-4">
+          {tags.map(tag => (
+            <span key={tag} className="bg-blue-700 text-white px-2 py-1 rounded-full text-xs flex items-center">
+              {tag}
+              <button type="button" className="ml-1 text-gray-300 hover:text-red-400" onClick={() => removeTag(tag)}>&times;</button>
+            </span>
+          ))}
+          <input
+            className="flex-1 p-1 rounded bg-gray-800 text-white border border-gray-700 focus:outline-none min-w-[80px]"
+            value={tagInput}
+            onChange={e => setTagInput(e.target.value)}
+            onKeyDown={handleTagKeyDown}
+            placeholder="Add tag"
+          />
+        </div>
+        <label className="block mb-2 text-gray-200">Image (optional)</label>
+        <input
+          type="file"
+          accept="image/*"
+          ref={fileInputRef}
+          onChange={handleImageChange}
+          className="mb-2 text-gray-200"
+        />
+        {isUploading && (
+          <div className="mb-2 text-blue-400">Uploading: {uploadProgress}%</div>
+        )}
+        {imageUrl && (
+          <img src={imageUrl} alt="Uploaded" className="mb-4 max-h-40 rounded" />
+        )}
+        {error && <div className="mb-2 text-red-400">{error}</div>}
+        {success && <div className="mb-2 text-green-400">{success}</div>}
+        <button
+          type="submit"
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mt-4 disabled:opacity-60"
+          disabled={isUploading}
+        >
+          Submit Question
+        </button>
+      </form>
     </div>
   );
 };
