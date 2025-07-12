@@ -1,11 +1,14 @@
 // Homepage.jsx
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Navbar from './Navbar';
 import { questions } from './data/questions';
 import QuestionCard from './QuestionCard';
 
 const Homepage = () => {
   const [posts] = useState(questions);
+  useEffect(effect => {
+      
+  })
 
   return (
     <div className="min-h-screen bg-[#090909] text-white">
