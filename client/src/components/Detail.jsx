@@ -5,30 +5,63 @@ import { useParams } from 'react-router-dom';
 const Detail = () => {
   const { id } = useParams();
   const [post, setPost] = useState(null);
-  const [showComments, setShowComments] = useState(false);
-  const [newComment, setNewComment] = useState('');
-  const [commentList, setCommentList] = useState([]);
   const [upvotes, setUpvotes] = useState(0);
+  const [newAnswer, setNewAnswer] = useState('');
+  const [answers, setAnswers] = useState([]);
+  const [commentBoxes, setCommentBoxes] = useState({});
+  const [newComments, setNewComments] = useState({});
 
   useEffect(() => {
     const found = questions.find((q) => q.id === parseInt(id));
     setPost(found);
-    setCommentList(found?.comments || []);
+    setAnswers(found?.answers || []);
     setUpvotes(found?.upvotes || 0);
   }, [id]);
 
-  const handleAddComment = () => {
-    if (newComment.trim() !== '') {
-      setCommentList((prev) => [
+  const toggleComments = (answerId) => {
+    setCommentBoxes((prev) => ({
+      ...prev,
+      [answerId]: !prev[answerId],
+    }));
+  };
+
+  const handleAddAnswer = () => {
+    if (newAnswer.trim() !== '') {
+      setAnswers((prev) => [
         ...prev,
         {
           id: prev.length + 1,
           name: 'You',
           image: 'https://api.dicebear.com/7.x/thumbs/svg?seed=you',
-          content: newComment,
+          body: newAnswer,
+          comments: [],
         },
       ]);
-      setNewComment('');
+      setNewAnswer('');
+    }
+  };
+
+  const handleAddComment = (answerId) => {
+    if (newComments[answerId]?.trim()) {
+      setAnswers((prev) =>
+        prev.map((ans) =>
+          ans.id === answerId
+            ? {
+                ...ans,
+                comments: [
+                  ...ans.comments,
+                  {
+                    id: ans.comments.length + 1,
+                    name: 'You',
+                    image: 'https://api.dicebear.com/7.x/thumbs/svg?seed=you',
+                    content: newComments[answerId],
+                  },
+                ],
+              }
+            : ans
+        )
+      );
+      setNewComments((prev) => ({ ...prev, [answerId]: '' }));
     }
   };
 
@@ -41,18 +74,17 @@ const Detail = () => {
 
           <div className="flex items-center gap-4 text-xs text-gray-400 mb-4">
             <span>👁 {post.views} views</span>
-            <span>⬆ {upvotes} upvotes</span>
             <button
               onClick={() => setUpvotes((u) => u + 1)}
               className="ml-2 text-cyan-500 hover:text-cyan-300 transition"
             >
-              Upvote 🔼
+              {upvotes} Upvotes 🔼
             </button>
           </div>
 
           <div className="mt-6">
             <h2 className="text-lg font-semibold text-cyan-300 mb-3">Answers</h2>
-            {post.answers?.map((answer) => (
+            {answers.map((answer) => (
               <div key={answer.id} className="mb-6 p-4 rounded-xl border border-gray-700 bg-[#1a1a1a]">
                 <div className="flex items-start justify-between mb-2">
                   <div>
@@ -67,49 +99,56 @@ const Detail = () => {
                 </div>
 
                 <button
-                  onClick={() => setShowComments((prev) => !prev)}
+                  onClick={() => toggleComments(answer.id)}
                   className="text-sm text-cyan-500 hover:underline mb-2"
                 >
-                  {showComments ? 'Hide' : 'View'} Comments 💬
+                  {commentBoxes[answer.id] ? 'Hide' : 'View'} Comments 💬
                 </button>
 
-                {showComments && (
-                  <div className="bg-[#111] rounded-lg p-3 max-h-40 overflow-y-auto text-sm text-gray-300 mb-2">
-                    {answer.comments?.map((comment) => (
-                      <div key={comment.id} className="mb-2 border-b border-gray-700 pb-1">
-                        <p className="text-cyan-400 font-medium">{comment.name}</p>
-                        <p>{comment.content}</p>
-                      </div>
-                    ))}
-                  </div>
+                {commentBoxes[answer.id] && (
+                  <>
+                    <div className="bg-[#111] rounded-lg p-3 max-h-40 overflow-y-auto text-sm text-gray-300 mb-2">
+                      {answer.comments?.map((comment) => (
+                        <div key={comment.id} className="mb-2 border-b border-gray-700 pb-1">
+                          <p className="text-cyan-400 font-medium">{comment.name}</p>
+                          <p>{comment.content}</p>
+                        </div>
+                      ))}
+                    </div>
+                    <textarea
+                      value={newComments[answer.id] || ''}
+                      onChange={(e) =>
+                        setNewComments((prev) => ({ ...prev, [answer.id]: e.target.value }))
+                      }
+                      placeholder="Add a comment..."
+                      className="w-full p-2 rounded-lg bg-[#1f1f1f] border border-gray-700 text-white mb-2"
+                    />
+                    <button
+                      onClick={() => handleAddComment(answer.id)}
+                      className="px-4 py-1 bg-cyan-600 hover:bg-cyan-500 rounded-xl text-sm"
+                    >
+                      Submit Comment
+                    </button>
+                  </>
                 )}
               </div>
             ))}
           </div>
 
           <div className="mt-8">
-            <h3 className="text-md font-semibold text-cyan-300 mb-2">Add a Comment</h3>
+            <h3 className="text-md font-semibold text-cyan-300 mb-2">Your Answer</h3>
             <textarea
-              value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
-              placeholder="Type your comment here..."
+              value={newAnswer}
+              onChange={(e) => setNewAnswer(e.target.value)}
+              placeholder="Type your answer here..."
               className="w-full p-2 rounded-lg bg-[#1f1f1f] border border-gray-700 text-white"
             />
             <button
-              onClick={handleAddComment}
+              onClick={handleAddAnswer}
               className="mt-2 px-4 py-1 bg-cyan-600 hover:bg-cyan-500 rounded-xl text-sm"
             >
-              Submit Comment
+              Submit Answer
             </button>
-
-            <div className="mt-4 bg-[#111] p-3 rounded-lg text-sm text-gray-300 max-h-40 overflow-y-auto">
-              {commentList.map((comment) => (
-                <div key={comment.id} className="mb-2 border-b border-gray-700 pb-1">
-                  <p className="text-cyan-400 font-medium">{comment.name}</p>
-                  <p>{comment.content}</p>
-                </div>
-              ))}
-            </div>
           </div>
         </div>
       ) : (

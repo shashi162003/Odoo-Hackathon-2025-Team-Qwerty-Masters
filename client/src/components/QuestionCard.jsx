@@ -1,12 +1,26 @@
-// QuestionCard.jsx
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import { questions } from './data/questions';
 
 const QuestionCard = ({ post }) => {
+  const navigate = useNavigate();
+
+  const handleCardClick = () => {
+
+    const index = questions.findIndex((q) => q.id === post.id);
+    if (index !== -1) {
+      questions[index].views += 1;
+    }
+
+  
+    navigate(`/details/${post.id}`);
+  };
+
   return (
- 
-    <div className="rounded-2xl shadow-md border border-gray-700 p-4 bg-[#0f0f0f] text-white w-full max-w-3xl mx-auto my-4 hover:border-cyan-500 transition-all">
-           <Link to={`/details/${post.id}`}>
+    <div
+      onClick={handleCardClick}
+      className="cursor-pointer rounded-2xl shadow-md border border-gray-700 p-4 bg-[#0f0f0f] text-white w-full max-w-3xl mx-auto my-4 hover:border-cyan-500 transition-all"
+    >
       <div className="flex items-start justify-between">
         <div className="flex flex-col gap-2">
           <h2 className="text-xl font-semibold text-cyan-400">{post.title}</h2>
@@ -26,9 +40,7 @@ const QuestionCard = ({ post }) => {
           <p className="text-xs text-gray-300 mt-1">{post.name}</p>
         </div>
       </div>
-          </Link>
     </div>
-
   );
 };
 
