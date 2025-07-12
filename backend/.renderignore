@@ -1,0 +1,3 @@
+# .renderignore
+node_modules/
+.env
