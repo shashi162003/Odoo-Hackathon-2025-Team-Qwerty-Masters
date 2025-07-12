@@ -23,6 +23,10 @@ const questionSchema = new mongoose.Schema({
     image: {
         type: String, 
     },
+    answers: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Answer',
+    }],
     upvotes: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
