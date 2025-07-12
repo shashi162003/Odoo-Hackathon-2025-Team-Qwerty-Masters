@@ -12,7 +12,7 @@ const Detail = () => {
   const [editingAnswer, setEditingAnswer] = useState(null);
   const [editText, setEditText] = useState('');
 
-  // Function to get cookie value
+
   const getCookie = (name) => {
     const value = `; ${document.cookie}`;
     const parts = value.split(`; ${name}=`);
@@ -20,7 +20,6 @@ const Detail = () => {
     return null;
   };
 
-  // Function to decode JWT token (simple decode without verification)
   const decodeJWT = (token) => {
     try {
       const base64Url = token.split('.')[1];
@@ -34,7 +33,7 @@ const Detail = () => {
     }
   };
 
-  // Check authentication by reading cookie
+
   useEffect(() => {
     const checkAuth = () => {
       const token = getCookie('token');
@@ -43,19 +42,19 @@ const Detail = () => {
         const decoded = decodeJWT(token);
         
         if (decoded && decoded.exp > Date.now() / 1000) {
-          // Token exists and hasn't expired
+      
           setIsAuthenticated(true);
           setCurrentUser({
             id: decoded.id,
             email: decoded.email
           });
         } else {
-          // Token expired or invalid
+       
           setIsAuthenticated(false);
           setCurrentUser(null);
         }
       } else {
-        // No token found
+   
         setIsAuthenticated(false);
         setCurrentUser(null);
       }
@@ -64,11 +63,11 @@ const Detail = () => {
     checkAuth();
   }, []);
 
-  // Fetch question details
+
   useEffect(() => {
     const fetchQuestion = async () => {
       try {
-        const response = await fetch(`http://localhost:4000/getQuestions/${id}`);
+        const response = await fetch(`http://localhost:4000/api/v1/questions/getQuestions/${id}`);
         if (response.ok) {
           const data = await response.json();
           setQuestion(data.question);
@@ -83,11 +82,11 @@ const Detail = () => {
     }
   }, [id]);
 
-  // Fetch answers for the question
+ 
   useEffect(() => {
     const fetchAnswers = async () => {
       try {
-        const response = await fetch(`http://localhost:4000/getAnswers/${id}`);
+        const response = await fetch(`http://localhost:4000/api/v1/answers/getAnswers/${id}`);
         if (response.ok) {
           const data = await response.json();
           setAnswers(data.answers || []);
@@ -108,7 +107,7 @@ const Detail = () => {
     if (!newAnswer.trim()) return;
     
     try {
-      const response = await fetch('http://localhost:4000/addAnswer', {
+      const response = await fetch('http://localhost:4000/api/v1/answers/addAnswer', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -122,8 +121,8 @@ const Detail = () => {
 
       if (response.ok) {
         const data = await response.json();
-        // Refresh answers after adding
-        const answersResponse = await fetch(`http://localhost:4000/getAnswers/${id}`);
+    
+        const answersResponse = await fetch(`http://localhost:4000/api/v1/answers/getAnswers/${id}`);
         if (answersResponse.ok) {
           const answersData = await answersResponse.json();
           setAnswers(answersData.answers || []);
@@ -145,7 +144,7 @@ const Detail = () => {
     if (!editText.trim()) return;
 
     try {
-      const response = await fetch(`http://localhost:4000/updateAnswer/${answerId}`, {
+      const response = await fetch(`http://localhost:4000/api/v1/answers/updateAnswer/${answerId}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -157,8 +156,8 @@ const Detail = () => {
       });
 
       if (response.ok) {
-        // Refresh answers after updating
-        const answersResponse = await fetch(`http://localhost:4000/getAnswers/${id}`);
+       
+        const answersResponse = await fetch(`http://localhost:4000/api/v1/answers/getAnswers/${id}`);
         if (answersResponse.ok) {
           const answersData = await answersResponse.json();
           setAnswers(answersData.answers || []);
@@ -181,14 +180,14 @@ const Detail = () => {
     if (!window.confirm('Are you sure you want to delete this answer?')) return;
 
     try {
-      const response = await fetch(`http://localhost:4000/deleteAnswer/${answerId}`, {
+      const response = await fetch(`http://localhost:4000/api/v1/answers/deleteAnswer/${answerId}`, {
         method: 'POST',
         credentials: 'include',
       });
 
       if (response.ok) {
-        // Refresh answers after deleting
-        const answersResponse = await fetch(`http://localhost:4000/getAnswers/${id}`);
+      
+        const answersResponse = await fetch(`http://localhost:4000/api/v1/answers/getAnswers/${id}`);
         if (answersResponse.ok) {
           const answersData = await answersResponse.json();
           setAnswers(answersData.answers || []);
@@ -209,14 +208,14 @@ const Detail = () => {
     if (!isAuthenticated) return;
     
     try {
-      const response = await fetch(`http://localhost:4000/upvoteQuestion/${id}`, {
+      const response = await fetch(`http://localhost:4000/api/v1/questions/upvoteQuestions/${id}`, {
         method: 'POST',
         credentials: 'include',
       });
 
       if (response.ok) {
-        // Refresh question data
-        const questionResponse = await fetch(`http://localhost:4000/getQuestions/${id}`);
+       
+        const questionResponse = await fetch(`http://localhost:4000/api/v1/questions/getQuestions/${id}`);
         if (questionResponse.ok) {
           const data = await questionResponse.json();
           setQuestion(data.question);
@@ -241,7 +240,7 @@ const Detail = () => {
     setEditText('');
   };
 
-  // Check if current user owns an answer
+
   const isAnswerOwner = (answer) => {
     if (!isAuthenticated || !currentUser || !answer.user) {
       return false;
@@ -268,7 +267,7 @@ const Detail = () => {
           <h1 className="text-2xl font-bold text-cyan-400 mb-2">{question.title}</h1>
           <p className="text-sm text-gray-300 mb-4">{question.description}</p>
 
-          {/* Tags */}
+       
           {question.tags && question.tags.length > 0 && (
             <div className="flex flex-wrap gap-2 mb-4">
               {question.tags.map((tag, index) => (
@@ -355,7 +354,7 @@ const Detail = () => {
                       {answer.upvotes?.length || 0} upvotes
                     </span>
                     
-                    {/* Show edit/delete buttons only if user owns the answer */}
+                    
                     {isAnswerOwner(answer) && (
                       <div className="flex gap-2">
                         <button
@@ -378,7 +377,7 @@ const Detail = () => {
             )}
           </div>
 
-          {/* Add Answer Section */}
+
           {isAuthenticated ? (
             <div className="mt-8">
               <h3 className="text-md font-semibold text-cyan-300 mb-2">Your Answer</h3>

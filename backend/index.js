@@ -6,6 +6,9 @@ const authRouter = require('./routes/authRoute');
 const connectCloudinary = require('./config/cloudinary');
 const questionRouter = require('./routes/questionRoute');
 const fileUpload = require('express-fileupload');
+const profileRouter = require('./routes/profileRoute');
+const answerRouter = require('./routes/answerRoute');
+const notificationRouter = require('./routes/notificationRoute');
 
 require("dotenv").config();
 const cors = require('cors');
@@ -24,6 +27,9 @@ app.use(cookieParser());
 
 app.use('/api/v1/auth', authRouter);
 app.use('/api/v1/questions', questionRouter);
+app.use('/api/v1/profile', profileRouter);
+app.use('/api/v1/answers', answerRouter);
+app.use('/api/v1/notifications', notificationRouter);
 
 app.get('/', (req, res) => {
     res.send('API running successfully');

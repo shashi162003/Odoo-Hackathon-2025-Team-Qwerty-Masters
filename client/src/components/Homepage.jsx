@@ -69,7 +69,7 @@ const Homepage = () => {
   const getQuestions = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:4000/getQuestions');
+      const response = await fetch('http://localhost:4000/api/v1/questions/getQuestions');
       
       if (!response.ok) {
         throw new Error('Failed to fetch questions');
@@ -96,7 +96,7 @@ const Homepage = () => {
     }
 
     try {
-      const response = await fetch(`http://localhost:4000/deleteQuestions/${questionId}`, {
+      const response = await fetch(`http://localhost:4000/api/v1/questions/deleteQuestions/${questionId}`, {
         method: 'POST',
         credentials: 'include',
       });
@@ -140,7 +140,7 @@ const Homepage = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-[#090909] text-white">
-        <Navbar />
+  
         <main className="pt-8 px-4">
           <div className="flex justify-center items-center h-64">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-400"></div>
@@ -154,7 +154,6 @@ const Homepage = () => {
   if (error) {
     return (
       <div className="min-h-screen bg-[#090909] text-white">
-        <Navbar />
         <main className="pt-8 px-4">
           <div className="text-center">
             <p className="text-red-400 mb-4">{error}</p>
@@ -172,7 +171,6 @@ const Homepage = () => {
 
   return (
     <div className="min-h-screen bg-[#090909] text-white">
-      <Navbar />
       
       <main className="pt-8 px-4">
         <div className="max-w-4xl mx-auto">

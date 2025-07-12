@@ -9,12 +9,12 @@ const QuestionCard = ({ question, currentUser, isAuthenticated, onDelete, isOwne
   };
 
   const handleDeleteClick = (e) => {
-    e.stopPropagation(); // Prevent navigation when clicking delete
+    e.stopPropagation(); 
     onDelete(question._id);
   };
 
   const handleUpvoteClick = async (e) => {
-    e.stopPropagation(); // Prevent navigation when clicking upvote
+    e.stopPropagation(); 
     
     if (!isAuthenticated) {
       alert('Please login to upvote');
@@ -22,14 +22,14 @@ const QuestionCard = ({ question, currentUser, isAuthenticated, onDelete, isOwne
     }
 
     try {
-      const response = await fetch(`http://localhost:4000/upvoteQuestion/${question._id}`, {
+      const response = await fetch(`http://localhost:4000/api/v1/questions/upvoteQuestions/${question._id}`, {
         method: 'POST',
         credentials: 'include',
       });
 
       if (response.ok) {
-        // You might want to refresh the questions or update the upvote count
-        window.location.reload(); // Simple approach, you can optimize this
+     
+        window.location.reload(); 
       } else if (response.status === 401) {
         alert('Please login to upvote');
       }
@@ -43,13 +43,13 @@ const QuestionCard = ({ question, currentUser, isAuthenticated, onDelete, isOwne
       className="bg-[#0f0f0f] rounded-2xl border border-gray-700 p-6 shadow-md hover:border-cyan-500 transition-all cursor-pointer group"
       onClick={handleQuestionClick}
     >
-      {/* Header with title and delete button */}
+    
       <div className="flex justify-between items-start mb-3">
         <h2 className="text-xl font-bold text-cyan-400 group-hover:text-cyan-300 transition-colors flex-1 mr-4">
           {question.title}
         </h2>
         
-        {/* Only show delete button if user is authenticated and owns the question */}
+        
         {isAuthenticated && isOwner && (
           <button
             onClick={handleDeleteClick}
@@ -61,12 +61,12 @@ const QuestionCard = ({ question, currentUser, isAuthenticated, onDelete, isOwne
         )}
       </div>
 
-      {/* Description */}
+   
       <p className="text-gray-300 mb-4 line-clamp-3">
         {question.description}
       </p>
 
-      {/* Tags */}
+ 
       {question.tags && question.tags.length > 0 && (
         <div className="flex flex-wrap gap-2 mb-4">
           {question.tags.map((tag) => (
@@ -80,7 +80,7 @@ const QuestionCard = ({ question, currentUser, isAuthenticated, onDelete, isOwne
         </div>
       )}
 
-      {/* Image if exists */}
+    
       {question.image && (
         <div className="mb-4">
           <img
@@ -91,10 +91,10 @@ const QuestionCard = ({ question, currentUser, isAuthenticated, onDelete, isOwne
         </div>
       )}
 
-      {/* Stats and Actions */}
+  
       <div className="flex items-center justify-between text-sm text-gray-400">
         <div className="flex items-center gap-4">
-          {/* Author info */}
+        
           <div className="flex items-center gap-2">
             <img
               src={`https://api.dicebear.com/7.x/thumbs/svg?seed=${question.user?.name || question.user?.firstName + ' ' + question.user?.lastName || 'anonymous'}`}
@@ -104,14 +104,13 @@ const QuestionCard = ({ question, currentUser, isAuthenticated, onDelete, isOwne
             <span>{question.user?.name || (question.user?.firstName + ' ' + question.user?.lastName) || 'Anonymous'}</span>
           </div>
 
-          {/* Date */}
+        
           <span>📅 {new Date(question.createdAt).toLocaleDateString()}</span>
 
-          {/* Answer count */}
           <span>💬 {question.answers?.length || 0} answers</span>
         </div>
 
-        {/* Upvote button */}
+     
         <div className="flex items-center gap-2">
           {isAuthenticated ? (
             <button
@@ -131,7 +130,7 @@ const QuestionCard = ({ question, currentUser, isAuthenticated, onDelete, isOwne
         </div>
       </div>
 
-      {/* Quick preview of latest answer if exists */}
+     
       {question.answers && question.answers.length > 0 && (
         <div className="mt-4 pt-4 border-t border-gray-700">
           <p className="text-xs text-gray-500 mb-1">Latest answer:</p>
