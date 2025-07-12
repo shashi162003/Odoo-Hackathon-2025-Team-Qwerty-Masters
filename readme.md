@@ -20,6 +20,10 @@
 
 
 
+https://github.com/user-attachments/assets/9d680545-5f48-43af-ae59-575e1e948abf
+
+
+
 ## 🚦 Backend API Routes
 
 All backend routes are prefixed with `/api/auth`. Below is a detailed explanation of each endpoint:
