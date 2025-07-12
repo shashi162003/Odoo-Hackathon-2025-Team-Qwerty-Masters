@@ -1,6 +1,7 @@
 const Question = require('../models/Question');
 const Answer = require('../models/Answer');
 const User = require('../models/User');
+const Notification = require('../models/Notification');
 
 exports.addAnswer = async (req, res) => {
     const id = req.user.id;
@@ -30,6 +31,16 @@ exports.addAnswer = async (req, res) => {
         await User.findByIdAndUpdate(id, {
             $push: { answers: newAnswer._id }
         });
+        const Notification = require('../models/Notification');
+        const question = await Question.findById(questionId);
+        if (question && question.user.toString() !== id) {
+            await Notification.create({
+                recipient: question.user,
+                question: questionId,
+                answer: newAnswer._id,
+                user: id
+            });
+        }
         return res.status(201).json({
             success: true,
             message: 'Answer added successfully',
