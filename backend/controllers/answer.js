@@ -133,3 +133,55 @@ exports.deleteAnswer = async (req, res) => {
         });
     }
 }
+
+exports.upvoteAnswer = async (req, res) => {
+    const {answerId} = req.body;
+    const userId = req.user.id;
+    try {
+        const answer = await Answer.findById(answerId);
+        if (!answer) {
+            return res.status(404).json({
+                success: false,
+                message: 'Answer not found'
+            });
+        }
+        answer.upvotes.push(userId);
+        await answer.save();
+        return res.status(200).json({
+            success: true,
+            message: 'Answer upvoted successfully'
+        });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error'
+        });
+    }
+}
+
+exports.downvoteAnswer = async (req, res) => {
+    const {answerId} = req.body;
+    const userId = req.user.id;
+    try {
+        const answer = await Answer.findById(answerId);
+        if (!answer) {
+            return res.status(404).json({
+                success: false,
+                message: 'Answer not found'
+            });
+        }
+        answer.upvotes.pull(userId);
+        await answer.save();
+        return res.status(200).json({
+            success: true,
+            message: 'Answer downvoted successfully'
+        });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error'
+        });
+    }
+}
