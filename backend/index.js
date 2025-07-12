@@ -11,6 +11,12 @@ const answerRouter = require('./routes/answerRoute');
 
 const notificationRouter = require('./routes/notificationRoute');
 const aiRouter = require('./routes/aiRoute');
+const cors = require('cors');
+
+app.use(cors({
+    origin: 'http://localhost:5173',
+    credentials: true,
+}))
 
 require("dotenv").config();
 const cors = require('cors');
