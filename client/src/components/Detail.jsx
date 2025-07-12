@@ -1,158 +1,417 @@
 import React, { useEffect, useState } from 'react';
-import { questions } from './data/questions';
 import { useParams } from 'react-router-dom';
 
 const Detail = () => {
   const { id } = useParams();
-  const [post, setPost] = useState(null);
-  const [upvotes, setUpvotes] = useState(0);
-  const [newAnswer, setNewAnswer] = useState('');
+  const [question, setQuestion] = useState(null);
   const [answers, setAnswers] = useState([]);
-  const [commentBoxes, setCommentBoxes] = useState({});
-  const [newComments, setNewComments] = useState({});
+  const [newAnswer, setNewAnswer] = useState('');
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [editingAnswer, setEditingAnswer] = useState(null);
+  const [editText, setEditText] = useState('');
+
+
+  const getCookie = (name) => {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+    return null;
+  };
+
+  const decodeJWT = (token) => {
+    try {
+      const base64Url = token.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+      }).join(''));
+      return JSON.parse(jsonPayload);
+    } catch (error) {
+      return null;
+    }
+  };
+
 
   useEffect(() => {
-    const found = questions.find((q) => q.id === parseInt(id));
-    setPost(found);
-    setAnswers(found?.answers || []);
-    setUpvotes(found?.upvotes || 0);
+    const checkAuth = () => {
+      const token = getCookie('token');
+      
+      if (token) {
+        const decoded = decodeJWT(token);
+        
+        if (decoded && decoded.exp > Date.now() / 1000) {
+      
+          setIsAuthenticated(true);
+          setCurrentUser({
+            id: decoded.id,
+            email: decoded.email
+          });
+        } else {
+       
+          setIsAuthenticated(false);
+          setCurrentUser(null);
+        }
+      } else {
+   
+        setIsAuthenticated(false);
+        setCurrentUser(null);
+      }
+    };
+    
+    checkAuth();
+  }, []);
+
+
+  useEffect(() => {
+    const fetchQuestion = async () => {
+      try {
+        const response = await fetch(`http://localhost:4000/api/v1/questions/getQuestions/${id}`);
+        if (response.ok) {
+          const data = await response.json();
+          setQuestion(data.question);
+        }
+      } catch (error) {
+        console.error('Failed to fetch question:', error);
+      }
+    };
+    
+    if (id) {
+      fetchQuestion();
+    }
   }, [id]);
 
-  const toggleComments = (answerId) => {
-    setCommentBoxes((prev) => ({
-      ...prev,
-      [answerId]: !prev[answerId],
-    }));
-  };
+ 
+  useEffect(() => {
+    const fetchAnswers = async () => {
+      try {
+        const response = await fetch(`http://localhost:4000/api/v1/answers/getAnswers/${id}`);
+        if (response.ok) {
+          const data = await response.json();
+          setAnswers(data.answers || []);
+        }
+      } catch (error) {
+        console.error('Failed to fetch answers:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const handleAddAnswer = () => {
-    if (newAnswer.trim() !== '') {
-      setAnswers((prev) => [
-        ...prev,
-        {
-          id: prev.length + 1,
-          name: 'You',
-          image: 'https://api.dicebear.com/7.x/thumbs/svg?seed=you',
-          body: newAnswer,
-          comments: [],
+    if (id) {
+      fetchAnswers();
+    }
+  }, [id]);
+
+  const handleAddAnswer = async () => {
+    if (!newAnswer.trim()) return;
+    
+    try {
+      const response = await fetch('http://localhost:4000/api/v1/answers/addAnswer', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
-      ]);
-      setNewAnswer('');
+        credentials: 'include',
+        body: JSON.stringify({
+          answer: newAnswer,
+          questionId: id
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+    
+        const answersResponse = await fetch(`http://localhost:4000/api/v1/answers/getAnswers/${id}`);
+        if (answersResponse.ok) {
+          const answersData = await answersResponse.json();
+          setAnswers(answersData.answers || []);
+        }
+        setNewAnswer('');
+      } else if (response.status === 401) {
+        alert('Please login to add an answer');
+        setIsAuthenticated(false);
+        setCurrentUser(null);
+      } else {
+        console.error('Failed to add answer');
+      }
+    } catch (error) {
+      console.error('Error adding answer:', error);
     }
   };
 
-  const handleAddComment = (answerId) => {
-    if (newComments[answerId]?.trim()) {
-      setAnswers((prev) =>
-        prev.map((ans) =>
-          ans.id === answerId
-            ? {
-                ...ans,
-                comments: [
-                  ...ans.comments,
-                  {
-                    id: ans.comments.length + 1,
-                    name: 'You',
-                    image: 'https://api.dicebear.com/7.x/thumbs/svg?seed=you',
-                    content: newComments[answerId],
-                  },
-                ],
-              }
-            : ans
-        )
-      );
-      setNewComments((prev) => ({ ...prev, [answerId]: '' }));
+  const handleUpdateAnswer = async (answerId) => {
+    if (!editText.trim()) return;
+
+    try {
+      const response = await fetch(`http://localhost:4000/api/v1/answers/updateAnswer/${answerId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          answer: editText
+        })
+      });
+
+      if (response.ok) {
+       
+        const answersResponse = await fetch(`http://localhost:4000/api/v1/answers/getAnswers/${id}`);
+        if (answersResponse.ok) {
+          const answersData = await answersResponse.json();
+          setAnswers(answersData.answers || []);
+        }
+        setEditingAnswer(null);
+        setEditText('');
+      } else if (response.status === 401) {
+        alert('You are not authorized to update this answer');
+        setIsAuthenticated(false);
+        setCurrentUser(null);
+      } else {
+        console.error('Failed to update answer');
+      }
+    } catch (error) {
+      console.error('Error updating answer:', error);
     }
   };
+
+  const handleDeleteAnswer = async (answerId) => {
+    if (!window.confirm('Are you sure you want to delete this answer?')) return;
+
+    try {
+      const response = await fetch(`http://localhost:4000/api/v1/answers/deleteAnswer/${answerId}`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+      
+        const answersResponse = await fetch(`http://localhost:4000/api/v1/answers/getAnswers/${id}`);
+        if (answersResponse.ok) {
+          const answersData = await answersResponse.json();
+          setAnswers(answersData.answers || []);
+        }
+      } else if (response.status === 401) {
+        alert('You are not authorized to delete this answer');
+        setIsAuthenticated(false);
+        setCurrentUser(null);
+      } else {
+        console.error('Failed to delete answer');
+      }
+    } catch (error) {
+      console.error('Error deleting answer:', error);
+    }
+  };
+
+  const handleUpvoteQuestion = async () => {
+    if (!isAuthenticated) return;
+    
+    try {
+      const response = await fetch(`http://localhost:4000/api/v1/questions/upvoteQuestions/${id}`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+       
+        const questionResponse = await fetch(`http://localhost:4000/api/v1/questions/getQuestions/${id}`);
+        if (questionResponse.ok) {
+          const data = await questionResponse.json();
+          setQuestion(data.question);
+        }
+      } else if (response.status === 401) {
+        alert('Please login to upvote');
+        setIsAuthenticated(false);
+        setCurrentUser(null);
+      }
+    } catch (error) {
+      console.error('Error upvoting question:', error);
+    }
+  };
+
+  const startEdit = (answer) => {
+    setEditingAnswer(answer._id);
+    setEditText(answer.answer);
+  };
+
+  const cancelEdit = () => {
+    setEditingAnswer(null);
+    setEditText('');
+  };
+
+
+  const isAnswerOwner = (answer) => {
+    if (!isAuthenticated || !currentUser || !answer.user) {
+      return false;
+    }
+    
+    const answerUserId = answer.user._id || answer.user.id || answer.user;
+    const currentUserId = currentUser.id;
+    
+    return answerUserId.toString() === currentUserId.toString();
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#090909] text-white flex items-center justify-center">
+        <p className="text-gray-400">Loading...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#090909] text-white px-4 py-6">
-      {post ? (
+      {question ? (
         <div className="max-w-4xl mx-auto bg-[#0f0f0f] rounded-2xl border border-gray-700 p-6 shadow-md">
-          <h1 className="text-2xl font-bold text-cyan-400 mb-2">{post.title}</h1>
-          <p className="text-sm text-gray-300 mb-4">{post.body}</p>
+          <h1 className="text-2xl font-bold text-cyan-400 mb-2">{question.title}</h1>
+          <p className="text-sm text-gray-300 mb-4">{question.description}</p>
+
+       
+          {question.tags && question.tags.length > 0 && (
+            <div className="flex flex-wrap gap-2 mb-4">
+              {question.tags.map((tag, index) => (
+                <span key={index} className="px-2 py-1 bg-cyan-600 text-xs rounded-full">
+                  {typeof tag === 'string' ? tag : tag.name}
+                </span>
+              ))}
+            </div>
+          )}
 
           <div className="flex items-center gap-4 text-xs text-gray-400 mb-4">
-            <span>👁 {post.views} views</span>
-            <button
-              onClick={() => setUpvotes((u) => u + 1)}
-              className="ml-2 text-cyan-500 hover:text-cyan-300 transition"
-            >
-              {upvotes} Upvotes 🔼
-            </button>
+            <span>By: {question.user?.name || (question.user?.firstName + ' ' + question.user?.lastName) || 'Anonymous'}</span>
+            <span>📅 {new Date(question.createdAt).toLocaleDateString()}</span>
+            {isAuthenticated && (
+              <button
+                onClick={handleUpvoteQuestion}
+                className="ml-2 text-cyan-500 hover:text-cyan-300 transition"
+              >
+                {question.upvotes?.length || 0} Upvotes 🔼
+              </button>
+            )}
           </div>
 
           <div className="mt-6">
-            <h2 className="text-lg font-semibold text-cyan-300 mb-3">Answers</h2>
-            {answers.map((answer) => (
-              <div key={answer.id} className="mb-6 p-4 rounded-xl border border-gray-700 bg-[#1a1a1a]">
-                <div className="flex items-start justify-between mb-2">
-                  <div>
-                    <h3 className="text-md font-semibold text-cyan-200">{answer.name}</h3>
-                    <p className="text-sm text-gray-300">{answer.body}</p>
-                  </div>
-                  <img
-                    src={answer.image}
-                    alt="avatar"
-                    className="w-10 h-10 rounded-full border border-cyan-500"
-                  />
-                </div>
-
-                <button
-                  onClick={() => toggleComments(answer.id)}
-                  className="text-sm text-cyan-500 hover:underline mb-2"
-                >
-                  {commentBoxes[answer.id] ? 'Hide' : 'View'} Comments 💬
-                </button>
-
-                {commentBoxes[answer.id] && (
-                  <>
-                    <div className="bg-[#111] rounded-lg p-3 max-h-40 overflow-y-auto text-sm text-gray-300 mb-2">
-                      {answer.comments?.map((comment) => (
-                        <div key={comment.id} className="mb-2 border-b border-gray-700 pb-1">
-                          <p className="text-cyan-400 font-medium">{comment.name}</p>
-                          <p>{comment.content}</p>
+            <h2 className="text-lg font-semibold text-cyan-300 mb-3">
+              Answers ({answers.length})
+            </h2>
+            
+            {answers.length === 0 ? (
+              <p className="text-gray-400 text-center py-8">No answers yet. Be the first to answer!</p>
+            ) : (
+              answers.map((answer) => (
+                <div key={answer._id} className="mb-6 p-4 rounded-xl border border-gray-700 bg-[#1a1a1a]">
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <h3 className="text-md font-semibold text-cyan-200">
+                          {answer.user?.name || (answer.user?.firstName + ' ' + answer.user?.lastName) || 'Anonymous'}
+                        </h3>
+                        <span className="text-xs text-gray-400">
+                          {new Date(answer.createdAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                      
+                      {editingAnswer === answer._id ? (
+                        <div className="space-y-2">
+                          <textarea
+                            value={editText}
+                            onChange={(e) => setEditText(e.target.value)}
+                            className="w-full p-2 rounded-lg bg-[#1f1f1f] border border-gray-700 text-white"
+                            rows="3"
+                          />
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleUpdateAnswer(answer._id)}
+                              className="px-3 py-1 bg-green-600 hover:bg-green-500 rounded-lg text-sm"
+                            >
+                              Save
+                            </button>
+                            <button
+                              onClick={cancelEdit}
+                              className="px-3 py-1 bg-gray-600 hover:bg-gray-500 rounded-lg text-sm"
+                            >
+                              Cancel
+                            </button>
+                          </div>
                         </div>
-                      ))}
+                      ) : (
+                        <p className="text-sm text-gray-300 whitespace-pre-wrap">{answer.answer}</p>
+                      )}
                     </div>
-                    <textarea
-                      value={newComments[answer.id] || ''}
-                      onChange={(e) =>
-                        setNewComments((prev) => ({ ...prev, [answer.id]: e.target.value }))
-                      }
-                      placeholder="Add a comment..."
-                      className="w-full p-2 rounded-lg bg-[#1f1f1f] border border-gray-700 text-white mb-2"
-                    />
-                    <button
-                      onClick={() => handleAddComment(answer.id)}
-                      className="px-4 py-1 bg-cyan-600 hover:bg-cyan-500 rounded-xl text-sm"
-                    >
-                      Submit Comment
-                    </button>
-                  </>
-                )}
-              </div>
-            ))}
+                    
+                    <div className="flex items-center gap-2">
+                      <img
+                        src={`https://api.dicebear.com/7.x/thumbs/svg?seed=${answer.user?.name || answer.user?.firstName + ' ' + answer.user?.lastName || 'anonymous'}`}
+                        alt="avatar"
+                        className="w-10 h-10 rounded-full border border-cyan-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-4 mt-3">
+                    <span className="text-xs text-gray-400">
+                      {answer.upvotes?.length || 0} upvotes
+                    </span>
+                    
+                    
+                    {isAnswerOwner(answer) && (
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => startEdit(answer)}
+                          className="text-xs text-blue-400 hover:text-blue-300"
+                        >
+                          ✏️ Edit
+                        </button>
+                        <button
+                          onClick={() => handleDeleteAnswer(answer._id)}
+                          className="text-xs text-red-400 hover:text-red-300"
+                        >
+                          🗑️ Delete
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
           </div>
 
-          <div className="mt-8">
-            <h3 className="text-md font-semibold text-cyan-300 mb-2">Your Answer</h3>
-            <textarea
-              value={newAnswer}
-              onChange={(e) => setNewAnswer(e.target.value)}
-              placeholder="Type your answer here..."
-              className="w-full p-2 rounded-lg bg-[#1f1f1f] border border-gray-700 text-white"
-            />
-            <button
-              onClick={handleAddAnswer}
-              className="mt-2 px-4 py-1 bg-cyan-600 hover:bg-cyan-500 rounded-xl text-sm"
-            >
-              Submit Answer
-            </button>
-          </div>
+
+          {isAuthenticated ? (
+            <div className="mt-8">
+              <h3 className="text-md font-semibold text-cyan-300 mb-2">Your Answer</h3>
+              <textarea
+                value={newAnswer}
+                onChange={(e) => setNewAnswer(e.target.value)}
+                placeholder="Type your answer here..."
+                className="w-full p-3 rounded-lg bg-[#1f1f1f] border border-gray-700 text-white"
+                rows="4"
+              />
+              <button
+                onClick={handleAddAnswer}
+                disabled={!newAnswer.trim()}
+                className="mt-2 px-4 py-2 bg-cyan-600 hover:bg-cyan-500 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-xl text-sm"
+              >
+                Submit Answer
+              </button>
+            </div>
+          ) : (
+            <div className="mt-8 text-center">
+              <p className="text-gray-400 mb-2">Please log in to add an answer</p>
+              <button
+                onClick={() => window.location.href = '/login'}
+                className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 rounded-xl text-sm"
+              >
+                Login
+              </button>
+            </div>
+          )}
         </div>
       ) : (
-        <p className="text-center text-gray-400">Loading...</p>
+        <div className="text-center">
+          <p className="text-gray-400">Question not found</p>
+        </div>
       )}
     </div>
   );
