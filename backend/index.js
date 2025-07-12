@@ -8,6 +8,11 @@ const questionRouter = require('./routes/questionRoute');
 const fileUpload = require('express-fileupload');
 
 require("dotenv").config();
+const cors = require('cors');
+app.use(cors({
+  origin: 'http://localhost:5173',
+  credentials: true,
+}));
 
 dbConnect();
 connectCloudinary();

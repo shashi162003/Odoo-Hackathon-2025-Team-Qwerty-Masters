@@ -55,6 +55,7 @@ exports.createQuestion = async (req, res) => {
 }
 
 exports.getQuestions = async (req, res) => {
+  
     try {
         const questions = await Question.find()
             .populate('user', 'name')
