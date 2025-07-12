@@ -2,6 +2,7 @@ const express = require('express');
 const notificationRouter = express.Router();
 const Notification = require('../models/Notification');
 const authMiddleware = require('../middlewares/authMiddleware');
+const { markAsRead } = require('../controllers/notificationController');
 
 notificationRouter.get('/getNotifications', authMiddleware, async (req, res) => {
     const userId = req.user.id;
@@ -15,5 +16,7 @@ notificationRouter.get('/getNotifications', authMiddleware, async (req, res) => 
         res.status(500).json({ success: false, message: 'Internal server error' });
     }
 });
+
+notificationRouter.post('/markAsRead/:notificationId', authMiddleware, markAsRead);
 
 module.exports = notificationRouter;
