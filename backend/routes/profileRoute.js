@@ -1,4 +1,5 @@
 const { getProfile, updateProfile } = require('../controllers/profile');
+const authMiddleware = require('../middlewares/authMiddleware');
 
 const profileRouter = require('express').Router();
 
